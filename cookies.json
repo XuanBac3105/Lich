@@ -1,1 +1,52 @@
-
+[
+{
+    "name": "ASC.AUTH",
+    "secure": false,
+    "value": "3684873D7D76A8DC18A9E8217E43A38EC463F0B88733B531EEA4DA7667EAB9979410807D4BA85D7A2B6E981A165E98600DFF83F45699FD26B2D1BA2BF0A0E29B652CA5E510C48F5EABF9B0A92050F4296FF6804FDE6F03969F6BA4BDE77C353B79DE390670584A771DCBDB774AE063354F655772543CB062F34B03473ACB5C28",
+    "hostOnly": true,
+    "domain": "sinhvien.huce.edu.vn",
+    "httpOnly": true,
+    "path": "/",
+    "sameSite": "lax",
+    "session": false,
+    "storeId": "0",
+    "id": 1
+},
+{
+    "name": "ASP.NET_SessionId",
+    "value": "3rcbfyhlyov2o42uur2zljpr",
+    "secure": false,
+    "path": "/",
+    "session": true,
+    "httpOnly": true,
+    "storeId": "0",
+    "hostOnly": true,
+    "sameSite": "lax",
+    "domain": "sinhvien.huce.edu.vn",
+    "id": 2
+},
+{
+    "secure": false,
+    "storeId": "0",
+    "value": "2da72f0f-a0f2-4076-adb9-dadd8fb4d8fa",
+    "hostOnly": true,
+    "session": false,
+    "name": "DT_Session_Log",
+    "domain": "sinhvien.huce.edu.vn",
+    "path": "/",
+    "httpOnly": false,
+    "id": 3
+},
+{
+    "name": "PAVWs3tE769MuloUJ81Y",
+    "session": false,
+    "hostOnly": true,
+    "value": "mCrNy3eyjrtIqEaflqR6Jc_DyaJoWf_4UpVRf-mKVS0",
+    "path": "/",
+    "storeId": "0",
+    "domain": "sinhvien.huce.edu.vn",
+    "httpOnly": false,
+    "secure": false,
+    "id": 4
+}
+]
