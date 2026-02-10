@@ -99,6 +99,9 @@ def main():
 
     print("🚀 Bot started")
 
+    # Chạy sync ngay lập tức khi khởi động
+    run()
+
     while True:
 
         wait = seconds_until_6am()
