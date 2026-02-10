@@ -86,21 +86,33 @@ def run():
 
     print("🚀 Syncing schedule")
 
-    # Lấy lịch của 8 tuần (tuần hiện tại + 7 tuần tiếp theo)
-    all_events = []
-    
-    for week in range(8):
-        print(f"📥 Fetching week {week}...")
-        html = get_schedule(week)
-        events = parse_schedule(html)
-        all_events.extend(events)
-        print(f"   Found {len(events)} events")
+    html = get_schedule()
 
-    print(f"📊 Total events: {len(all_events)}")
+    events = parse_schedule(html)
+    
+    # Lấy link Teams/Zoom cho các event có IDLichHoc
+    from meeting_links import get_meeting_link
+    
+    for event in events:
+        if "_idLichHoc" in event:
+            id_lich_hoc = event["_idLichHoc"]
+            print(f"🔗 Getting meeting link for {event['summary']}...")
+            
+            meeting_link = get_meeting_link(id_lich_hoc)
+            
+            if meeting_link:
+                # Thêm link vào description
+                event["description"] = f"Sync từ HUCE\n\n🎥 Link học online:\n{meeting_link}"
+                print(f"   ✅ Found link")
+            else:
+                print(f"   ⚠️  No link found")
+            
+            # Xóa _idLichHoc vì Google Calendar API không cần field này
+            del event["_idLichHoc"]
 
     delete_all_events()
 
-    for event in all_events:
+    for event in events:
         create_event(event)
 
     print("✅ Done sync")

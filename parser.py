@@ -82,6 +82,26 @@ def parse_schedule(html):
             if is_cancel:
                 subject += " (TẠM NGƯNG)"
 
+            # Tìm IDLichHoc để lấy link Teams/Zoom
+            id_lich_hoc = None
+            # Thử tìm trong attribute onclick, data-id, hoặc trong button
+            parent_td = content.parent
+            if parent_td:
+                # Tìm button hoặc link có chứa IDLichHoc
+                onclick_elem = parent_td.find(attrs={"onclick": True})
+                if onclick_elem:
+                    onclick_text = onclick_elem.get("onclick", "")
+                    # Extract ID từ onclick, ví dụ: JoinZoomClass(560039)
+                    id_match = re.search(r'JoinZoomClass\((\d+)\)', onclick_text)
+                    if id_match:
+                        id_lich_hoc = id_match.group(1)
+                
+                # Hoặc tìm trong data-id
+                if not id_lich_hoc:
+                    data_id_elem = parent_td.find(attrs={"data-id": True})
+                    if data_id_elem:
+                        id_lich_hoc = data_id_elem.get("data-id")
+
             event = {
 
                 "summary": subject,
@@ -100,6 +120,10 @@ def parse_schedule(html):
                     "timeZone": "Asia/Ho_Chi_Minh"
                 }
             }
+            
+            # Lưu IDLichHoc để sau này lấy link
+            if id_lich_hoc:
+                event["_idLichHoc"] = id_lich_hoc
 
             events.append(event)
 
