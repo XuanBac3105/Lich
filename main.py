@@ -26,8 +26,11 @@ def load_cookies():
     return cookies
 
 
-def get_schedule():
-
+def get_schedule(week=0):
+    """
+    Lấy lịch học theo tuần
+    week: 0 = tuần hiện tại, 1 = tuần sau, -1 = tuần trước, etc.
+    """
     cookies = load_cookies()
 
     headers = {
@@ -46,7 +49,7 @@ def get_schedule():
 
     data = {
 
-        "tuan": "0"
+        "tuan": str(week)
 
     }
 
@@ -83,13 +86,21 @@ def run():
 
     print("🚀 Syncing schedule")
 
-    html = get_schedule()
+    # Lấy lịch của 8 tuần (tuần hiện tại + 7 tuần tiếp theo)
+    all_events = []
+    
+    for week in range(8):
+        print(f"📥 Fetching week {week}...")
+        html = get_schedule(week)
+        events = parse_schedule(html)
+        all_events.extend(events)
+        print(f"   Found {len(events)} events")
 
-    events = parse_schedule(html)
+    print(f"📊 Total events: {len(all_events)}")
 
     delete_all_events()
 
-    for event in events:
+    for event in all_events:
         create_event(event)
 
     print("✅ Done sync")
