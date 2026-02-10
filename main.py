@@ -89,7 +89,7 @@ def notify_change():
     print("📢 Thời khoá biểu thay đổi lúc:", datetime.now())
 
     # sync lên Google Calendar
-    sync_to_google_calendar()
+    sync_to_google_calendar(current)
 
 
 # chương trình chính
