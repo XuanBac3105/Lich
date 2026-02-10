@@ -1,12 +1,12 @@
 import requests
 import os
 import time
-import json
 from datetime import datetime
+from google_calendar import sync_to_google_calendar
 
 URL = "https://sinhvien.huce.edu.vn/SinhVien/GetDanhSachLichTheoTuan"
 
-CHECK_INTERVAL = 86400  # 24 giờ (86400 giây)
+CHECK_INTERVAL = 86400  # 24 giờ
 
 
 # đọc COOKIE từ Railway Variables
@@ -30,6 +30,7 @@ def load_cookies():
 
 # lấy thời khoá biểu
 def get_schedule():
+
     cookies = load_cookies()
 
     headers = {
@@ -45,21 +46,29 @@ def get_schedule():
     }
 
     try:
-        response = requests.post(URL, headers=headers, cookies=cookies, data=data)
+
+        response = requests.post(
+            URL,
+            headers=headers,
+            cookies=cookies,
+            data=data,
+            timeout=30
+        )
 
         if response.status_code == 200:
             return response.text
-        else:
-            print("❌ Lỗi HTTP:", response.status_code)
-            return None
+
+        print("❌ HTTP Error:", response.status_code)
+        return None
 
     except Exception as e:
-        print("❌ Lỗi request:", e)
+        print("❌ Request Error:", e)
         return None
 
 
-# lưu cache
-def load_old():
+# đọc cache
+def load_cache():
+
     if not os.path.exists("schedule_cache.txt"):
         return ""
 
@@ -67,40 +76,57 @@ def load_old():
         return f.read()
 
 
-def save_new(data):
+# lưu cache
+def save_cache(data):
+
     with open("schedule_cache.txt", "w", encoding="utf-8") as f:
         f.write(data)
 
 
 # thông báo thay đổi
 def notify_change():
-    print("📢 Thời khoá biểu đã thay đổi lúc", datetime.now())
+
+    print("📢 Thời khoá biểu thay đổi lúc:", datetime.now())
+
+    # sync lên Google Calendar
+    sync_to_google_calendar()
 
 
 # chương trình chính
 def main():
+
     print("🚀 Bot started")
 
     while True:
+
         try:
+
             print("🔍 Đang kiểm tra thời khoá biểu...")
 
             current = get_schedule()
 
             if current:
-                old = load_old()
+
+                old = load_cache()
 
                 if current != old:
+
                     print("✅ Có thay đổi!")
+
                     notify_change()
-                    save_new(current)
+
+                    save_cache(current)
+
                 else:
+
                     print("⏱ Không có thay đổi")
 
             else:
+
                 print("⚠ Không lấy được dữ liệu")
 
         except Exception as e:
+
             print("❌ Lỗi:", e)
 
         print("💤 Sleep 24h...")
