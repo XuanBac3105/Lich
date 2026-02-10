@@ -1,97 +1,109 @@
 import requests
-import json
+import os
 import time
+import json
+from datetime import datetime
 
-CHECK_INTERVAL = 86400  # 24h
+URL = "https://sinhvien.huce.edu.vn/SinhVien/GetDanhSachLichTheoTuan"
 
+CHECK_INTERVAL = 86400  # 24 giờ (86400 giây)
+
+
+# đọc COOKIE từ Railway Variables
 def load_cookies():
+    cookie_string = os.getenv("COOKIE")
 
-    with open("cookies.json", "r", encoding="utf-8") as f:
-        cookies_list = json.load(f)
+    if not cookie_string:
+        print("❌ COOKIE chưa được thiết lập")
+        return {}
 
     cookies = {}
 
-    for c in cookies_list:
-        cookies[c["name"]] = c["value"]
+    parts = cookie_string.split(";")
+    for part in parts:
+        if "=" in part:
+            name, value = part.strip().split("=", 1)
+            cookies[name] = value
 
     return cookies
 
 
+# lấy thời khoá biểu
 def get_schedule():
-
     cookies = load_cookies()
-
-    url = "https://sinhvien.huce.edu.vn/SinhVien/GetDanhSachLichTheoTuan"
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Accept": "text/html, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "Origin": "https://sinhvien.huce.edu.vn",
-        "Referer": "https://sinhvien.huce.edu.vn/lich-theo-tuan.html",
-        "X-Requested-With": "XMLHttpRequest"
+        "Referer": "https://sinhvien.huce.edu.vn/lich-theo-tuan.html"
     }
 
     data = {
-        "tuan": "0",
-        "nam": "0"
+        "tuan": "0"
     }
 
     try:
+        response = requests.post(URL, headers=headers, cookies=cookies, data=data)
 
-        r = requests.post(
-            url,
-            headers=headers,
-            cookies=cookies,
-            data=data
-        )
-
-        print("Status:", r.status_code)
-
-        if r.status_code == 200:
-
-            if len(r.text) > 100:
-                print("Lấy lịch thành công")
-                return r.text
-
-            else:
-                print("Có thể cookie hết hạn")
-                return None
-
+        if response.status_code == 200:
+            return response.text
         else:
-            print("Lỗi:", r.status_code)
+            print("❌ Lỗi HTTP:", response.status_code)
             return None
 
     except Exception as e:
-        print("Error:", e)
+        print("❌ Lỗi request:", e)
         return None
 
 
-def main():
+# lưu cache
+def load_old():
+    if not os.path.exists("schedule_cache.txt"):
+        return ""
 
-    last = None
+    with open("schedule_cache.txt", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def save_new(data):
+    with open("schedule_cache.txt", "w", encoding="utf-8") as f:
+        f.write(data)
+
+
+# thông báo thay đổi
+def notify_change():
+    print("📢 Thời khoá biểu đã thay đổi lúc", datetime.now())
+
+
+# chương trình chính
+def main():
+    print("🚀 Bot started")
 
     while True:
+        try:
+            print("🔍 Đang kiểm tra thời khoá biểu...")
 
-        print("Đang kiểm tra thời khoá biểu...")
+            current = get_schedule()
 
-        current = get_schedule()
+            if current:
+                old = load_old()
 
-        if current:
-
-            if last is None:
-                last = current
-                print("Đã lưu lịch")
-
-            elif current != last:
-                print("LỊCH ĐÃ THAY ĐỔI!")
-                last = current
+                if current != old:
+                    print("✅ Có thay đổi!")
+                    notify_change()
+                    save_new(current)
+                else:
+                    print("⏱ Không có thay đổi")
 
             else:
-                print("Không có thay đổi")
+                print("⚠ Không lấy được dữ liệu")
 
-        print("Kiểm tra lại sau 24 giờ...\n")
+        except Exception as e:
+            print("❌ Lỗi:", e)
 
+        print("💤 Sleep 24h...")
         time.sleep(CHECK_INTERVAL)
 
 
