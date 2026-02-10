@@ -65,7 +65,7 @@ def create_event(service, summary, description, location, start_time, end_time):
     }
 
     event = service.events().insert(
-        calendarId="primary",  # giữ nguyên nếu đã share calendar
+        calendarId="xuanbac0531@gmail.com",  # giữ nguyên nếu đã share calendar
         body=event
     ).execute()
 
