@@ -1,6 +1,7 @@
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
+from bs4 import BeautifulSoup
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -9,15 +10,13 @@ from googleapiclient.discovery import build
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
-# =========================
-# lấy credentials từ Railway Variables
-# =========================
+# đọc credentials từ Railway
 def get_credentials():
 
     creds_json = os.getenv("GOOGLE_CREDENTIALS")
 
     if not creds_json:
-        raise Exception("GOOGLE_CREDENTIALS chưa được thiết lập")
+        raise Exception("GOOGLE_CREDENTIALS chưa thiết lập")
 
     creds_dict = json.loads(creds_json)
 
@@ -29,9 +28,7 @@ def get_credentials():
     return credentials
 
 
-# =========================
-# tạo Google Calendar service
-# =========================
+# tạo service
 def get_service():
 
     credentials = get_credentials()
@@ -45,61 +42,131 @@ def get_service():
     return service
 
 
-# =========================
-# tạo event
-# =========================
-def create_event(service, summary, description, location, start_time, end_time):
+# parse HTML HUCE schedule
+def parse_schedule(html):
 
-    event = {
-        "summary": summary,
-        "location": location,
-        "description": description,
-        "start": {
-            "dateTime": start_time.isoformat(),
-            "timeZone": "Asia/Ho_Chi_Minh",
-        },
-        "end": {
-            "dateTime": end_time.isoformat(),
-            "timeZone": "Asia/Ho_Chi_Minh",
-        },
-    }
+    soup = BeautifulSoup(html, "html.parser")
 
-    event = service.events().insert(
-        calendarId="xuanbac0531@gmail.com",  # giữ nguyên nếu đã share calendar
-        body=event
-    ).execute()
+    events = []
 
-    print("📅 Event created:", event.get("htmlLink"))
+    table = soup.find("table")
+
+    if not table:
+        return events
+
+    headers = table.find_all("th")
+
+    dates = []
+
+    for th in headers[1:]:
+        text = th.get_text(separator="\n").strip().split("\n")
+
+        if len(text) >= 2:
+            dates.append(text[1].strip())
+        else:
+            dates.append(None)
+
+    rows = table.find_all("tr")
+
+    for row in rows:
+
+        cols = row.find_all("td")
+
+        if len(cols) < 2:
+            continue
+
+        for i in range(1, len(cols)):
+
+            cell = cols[i]
+
+            content = cell.find_all("div", class_="content")
+
+            for c in content:
+
+                try:
+
+                    subject = c.find("a").text.strip()
+
+                    time_text = c.find(string=lambda t: "Giờ" in t)
+
+                    time_parent = c.find("span", string=lambda t: "Giờ" in t)
+
+                    if not time_parent:
+                        continue
+
+                    time_line = time_parent.parent.get_text()
+
+                    time_str = time_line.split(":")[1].strip()
+
+                    start_time, end_time = time_str.split(" - ")
+
+                    room = c.find("font").text.strip()
+
+                    date_str = dates[i-1]
+
+                    date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+
+                    start_dt = datetime.strptime(
+                        date_str + " " + start_time,
+                        "%d/%m/%Y %H:%M"
+                    )
+
+                    end_dt = datetime.strptime(
+                        date_str + " " + end_time,
+                        "%d/%m/%Y %H:%M"
+                    )
+
+                    events.append({
+                        "summary": subject,
+                        "location": room,
+                        "start": start_dt,
+                        "end": end_dt
+                    })
+
+                except Exception as e:
+                    print("Parse error:", e)
+
+    return events
 
 
-# =========================
-# hàm sync chính (được gọi từ main.py)
-# =========================
-def sync_to_google_calendar():
+# tạo event Google Calendar
+def create_events(service, events):
 
-    try:
+    for ev in events:
 
-        print("📅 Sync Google Calendar...")
+        body = {
+            "summary": ev["summary"],
+            "location": ev["location"],
+            "description": "Tự động sync từ HUCE",
+            "start": {
+                "dateTime": ev["start"].isoformat(),
+                "timeZone": "Asia/Ho_Chi_Minh"
+            },
+            "end": {
+                "dateTime": ev["end"].isoformat(),
+                "timeZone": "Asia/Ho_Chi_Minh"
+            }
+        }
 
-        service = get_service()
+        event = service.events().insert(
+            calendarId="primary",
+            body=body
+        ).execute()
 
-        # test event (sau sẽ thay bằng parse HUCE)
-        now = datetime.now()
+        print("Created:", event.get("htmlLink"))
 
-        start = now + timedelta(minutes=1)
-        end = start + timedelta(hours=2)
 
-        create_event(
-            service=service,
-            summary="HUCE Schedule Updated",
-            description="Tự động sync từ Railway",
-            location="HUCE",
-            start_time=start,
-            end_time=end
-        )
+# hàm chính
+def sync_to_google_calendar(html):
 
-        print("✅ Sync thành công")
+    print("📅 Sync Google Calendar...")
 
-    except Exception as e:
+    service = get_service()
 
-        print("❌ Lỗi sync Google Calendar:", e)
+    events = parse_schedule(html)
+
+    print("Found", len(events), "events")
+
+    create_events(service, events)
+
+    print("✅ Sync xong")
