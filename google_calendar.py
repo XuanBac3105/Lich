@@ -8,6 +8,7 @@ from googleapiclient.discovery import build
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
+# lấy credentials từ Railway Variables
 def get_credentials():
 
     creds_json = os.getenv("GOOGLE_CREDENTIALS")
@@ -25,6 +26,7 @@ def get_credentials():
     return credentials
 
 
+# tạo service
 def get_service():
 
     credentials = get_credentials()
@@ -38,11 +40,15 @@ def get_service():
     return service
 
 
+# tạo service global
 service = get_service()
 
-CALENDAR_ID = "primary"
+
+# QUAN TRỌNG: dùng email calendar của bạn
+CALENDAR_ID = "xuanbac0531@gmail.com"
 
 
+# tạo event
 def create_event(event):
 
     created_event = service.events().insert(
@@ -53,6 +59,7 @@ def create_event(event):
     print("📅 Created:", created_event.get("summary"))
 
 
+# xoá toàn bộ event cũ
 def delete_all_events():
 
     print("🗑 Deleting old events...")
