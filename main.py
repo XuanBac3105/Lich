@@ -101,8 +101,8 @@ def run():
             meeting_link = get_meeting_link(id_lich_hoc)
             
             if meeting_link:
-                # Thêm link vào description
-                event["description"] = f"Sync từ HUCE\n\n🎥 Link học online:\n{meeting_link}"
+                # Lưu link vào _meetingLink để google_calendar.py xử lý
+                event["_meetingLink"] = meeting_link
                 print(f"   ✅ Found link")
             else:
                 print(f"   ⚠️  No link found")
