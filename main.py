@@ -1,26 +1,24 @@
 import requests
 import os
 import time
-from datetime import datetime
-from google_calendar import sync_to_google_calendar
+import pytz
+
+from datetime import datetime, timedelta
+
+from parser import parse_schedule
+from google_calendar import create_event, delete_all_events
+
 
 URL = "https://sinhvien.huce.edu.vn/SinhVien/GetDanhSachLichTheoTuan"
 
-CHECK_INTERVAL = 86400  # 24 giờ
 
-
-# đọc COOKIE từ Railway Variables
 def load_cookies():
-    cookie_string = os.getenv("COOKIE")
 
-    if not cookie_string:
-        print("❌ COOKIE chưa được thiết lập")
-        return {}
+    cookie_string = os.getenv("COOKIE")
 
     cookies = {}
 
-    parts = cookie_string.split(";")
-    for part in parts:
+    for part in cookie_string.split(";"):
         if "=" in part:
             name, value = part.strip().split("=", 1)
             cookies[name] = value
@@ -28,109 +26,88 @@ def load_cookies():
     return cookies
 
 
-# lấy thời khoá biểu
 def get_schedule():
 
     cookies = load_cookies()
 
     headers = {
+
         "User-Agent": "Mozilla/5.0",
+
         "X-Requested-With": "XMLHttpRequest",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+
+        "Content-Type": "application/x-www-form-urlencoded",
+
         "Origin": "https://sinhvien.huce.edu.vn",
+
         "Referer": "https://sinhvien.huce.edu.vn/lich-theo-tuan.html"
+
     }
 
     data = {
+
         "tuan": "0"
+
     }
 
-    try:
+    response = requests.post(
+        URL,
+        headers=headers,
+        cookies=cookies,
+        data=data
+    )
 
-        response = requests.post(
-            URL,
-            headers=headers,
-            cookies=cookies,
-            data=data,
-            timeout=30
-        )
-
-        if response.status_code == 200:
-            return response.text
-
-        print("❌ HTTP Error:", response.status_code)
-        return None
-
-    except Exception as e:
-        print("❌ Request Error:", e)
-        return None
+    return response.text
 
 
-# đọc cache
-def load_cache():
+def seconds_until_6am():
 
-    if not os.path.exists("schedule_cache.txt"):
-        return ""
+    timezone = pytz.timezone("Asia/Ho_Chi_Minh")
 
-    with open("schedule_cache.txt", "r", encoding="utf-8") as f:
-        return f.read()
+    now = datetime.now(timezone)
 
+    next_run = now.replace(
+        hour=6,
+        minute=0,
+        second=0,
+        microsecond=0
+    )
 
-# lưu cache
-def save_cache(data):
+    if now >= next_run:
+        next_run += timedelta(days=1)
 
-    with open("schedule_cache.txt", "w", encoding="utf-8") as f:
-        f.write(data)
-
-
-# thông báo thay đổi
-def notify_change():
-
-    print("📢 Thời khoá biểu thay đổi lúc:", datetime.now())
-
-    # sync lên Google Calendar
-    sync_to_google_calendar(current)
+    return (next_run - now).total_seconds()
 
 
-# chương trình chính
+def run():
+
+    print("🚀 Syncing schedule")
+
+    html = get_schedule()
+
+    events = parse_schedule(html)
+
+    delete_all_events()
+
+    for event in events:
+        create_event(event)
+
+    print("✅ Done sync")
+
+
 def main():
 
     print("🚀 Bot started")
 
     while True:
 
-        try:
+        wait = seconds_until_6am()
 
-            print("🔍 Đang kiểm tra thời khoá biểu...")
+        print(f"⏰ Wait {wait/3600:.2f} hours until 6AM")
 
-            current = get_schedule()
+        time.sleep(wait)
 
-            if current:
-
-                old = load_cache()
-
-                if current != old:
-
-                    print("✅ Có thay đổi!")
-
-                    notify_change()
-
-                    save_cache(current)
-
-                else:
-
-                    print("⏱ Không có thay đổi")
-
-            else:
-
-                print("⚠ Không lấy được dữ liệu")
-
-        except Exception as e:
-
-            print("❌ Lỗi:", e)
-
-        print("💤 Sleep 24h...")
-        time.sleep(CHECK_INTERVAL)
+        run()
 
 
 if __name__ == "__main__":
