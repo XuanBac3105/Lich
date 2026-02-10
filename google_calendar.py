@@ -9,7 +9,9 @@ from googleapiclient.discovery import build
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
-# đọc credentials từ Railway Variables
+# =========================
+# lấy credentials từ Railway Variables
+# =========================
 def get_credentials():
 
     creds_json = os.getenv("GOOGLE_CREDENTIALS")
@@ -27,7 +29,9 @@ def get_credentials():
     return credentials
 
 
-# tạo service
+# =========================
+# tạo Google Calendar service
+# =========================
 def get_service():
 
     credentials = get_credentials()
@@ -41,37 +45,36 @@ def get_service():
     return service
 
 
-# tạo event mẫu (bạn sẽ sửa sau để parse từ HUCE)
-def create_sample_event(service):
-
-    now = datetime.now()
-
-    start = now + timedelta(minutes=1)
-    end = start + timedelta(hours=2)
+# =========================
+# tạo event
+# =========================
+def create_event(service, summary, description, location, start_time, end_time):
 
     event = {
-        "summary": "Test lịch học HUCE",
-        "location": "HUCE",
-        "description": "Tự động sync từ Railway",
+        "summary": summary,
+        "location": location,
+        "description": description,
         "start": {
-            "dateTime": start.isoformat(),
+            "dateTime": start_time.isoformat(),
             "timeZone": "Asia/Ho_Chi_Minh",
         },
         "end": {
-            "dateTime": end.isoformat(),
+            "dateTime": end_time.isoformat(),
             "timeZone": "Asia/Ho_Chi_Minh",
         },
     }
 
     event = service.events().insert(
-        calendarId="primary",
+        calendarId="primary",  # giữ nguyên nếu đã share calendar
         body=event
     ).execute()
 
     print("📅 Event created:", event.get("htmlLink"))
 
 
-# hàm chính được gọi từ main.py
+# =========================
+# hàm sync chính (được gọi từ main.py)
+# =========================
 def sync_to_google_calendar():
 
     try:
@@ -80,7 +83,20 @@ def sync_to_google_calendar():
 
         service = get_service()
 
-        create_sample_event(service)
+        # test event (sau sẽ thay bằng parse HUCE)
+        now = datetime.now()
+
+        start = now + timedelta(minutes=1)
+        end = start + timedelta(hours=2)
+
+        create_event(
+            service=service,
+            summary="HUCE Schedule Updated",
+            description="Tự động sync từ Railway",
+            location="HUCE",
+            start_time=start,
+            end_time=end
+        )
 
         print("✅ Sync thành công")
 
